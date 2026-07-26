@@ -177,18 +177,6 @@ npm start
 
 ---
 
-## Screenshots
-
-Add screenshots of:
-
-- Landing Page
-- Dashboard
-- Holdings
-- Orders
-- Buy Window
-- Sell Window
-
----
 
 ## Author
 
