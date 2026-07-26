@@ -151,15 +151,50 @@ app.get("/allPositions", async (req, res) => {
 //----------> Post Route
 app.post("/newOrder", async (req, res) => {
   try {
-    let newOrder = new OrdersModel({
-      name: req.body.name,
-      qty: req.body.qty,
-      price: req.body.price,
-      mode: req.body.mode,
+    const { name, qty, price, mode } = req.body;
+
+    const newOrder = new OrdersModel({
+      name,
+      qty,
+      price,
+      mode,
     });
+
     await newOrder.save();
+
+    const existingHolding = await HoldingsModel.findOne({ name });
+
+if (existingHolding) {
+  const oldQty = existingHolding.qty;
+  const newQty = Number(qty);
+  const totalQty = oldQty + newQty;
+
+  const weightedAvg =
+    ((existingHolding.avg * oldQty) + (Number(price) * newQty)) / totalQty;
+
+  existingHolding.qty = totalQty;
+  existingHolding.avg = weightedAvg;
+  existingHolding.price = Number(price);
+
+  await existingHolding.save();
+} else {
+  const newHolding = new HoldingsModel({
+    name,
+    qty: Number(qty),
+    avg: Number(price),
+    price: Number(price),
+    net: "0.00%",
+    day: "0.00%",
+  });
+
+  await newHolding.save();
+}
+
+    // We'll update Holdings in the next step.
+
     res.send("Order saved!");
   } catch (error) {
+    console.error(error);
     res.status(500).send("Error saving order");
   }
 });
