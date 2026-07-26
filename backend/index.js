@@ -153,10 +153,13 @@ app.post("/newOrder", async (req, res) => {
   try {
     const { name, qty, price, mode } = req.body;
 
+    const quantity = Number(qty);
+    const stockPrice = Number(price);
+
     const newOrder = new OrdersModel({
       name,
-      qty,
-      price,
+      qty: quantity,
+      price: stockPrice,
       mode,
     });
 
@@ -164,35 +167,54 @@ app.post("/newOrder", async (req, res) => {
 
     const existingHolding = await HoldingsModel.findOne({ name });
 
-if (existingHolding) {
-  const oldQty = existingHolding.qty;
-  const newQty = Number(qty);
-  const totalQty = oldQty + newQty;
+    if (mode === "BUY") {
+      if (existingHolding) {
+        const totalQty = existingHolding.qty + quantity;
 
-  const weightedAvg =
-    ((existingHolding.avg * oldQty) + (Number(price) * newQty)) / totalQty;
+        const weightedAvg =
+          ((existingHolding.avg * existingHolding.qty) +
+            stockPrice * quantity) /
+          totalQty;
 
-  existingHolding.qty = totalQty;
-  existingHolding.avg = weightedAvg;
-  existingHolding.price = Number(price);
+        existingHolding.qty = totalQty;
+        existingHolding.avg = weightedAvg;
+        existingHolding.price = stockPrice;
 
-  await existingHolding.save();
-} else {
-  const newHolding = new HoldingsModel({
-    name,
-    qty: Number(qty),
-    avg: Number(price),
-    price: Number(price),
-    net: "0.00%",
-    day: "0.00%",
-  });
+        await existingHolding.save();
+      } else {
+        const newHolding = new HoldingsModel({
+          name,
+          qty: quantity,
+          avg: stockPrice,
+          price: stockPrice,
+          net: "0.00%",
+          day: "0.00%",
+        });
 
-  await newHolding.save();
-}
+        await newHolding.save();
+      }
+    }
 
-    // We'll update Holdings in the next step.
+    else if (mode === "SELL") {
+      if (!existingHolding) {
+        return res.status(400).send("You don't own this stock.");
+      }
 
-    res.send("Order saved!");
+      if (existingHolding.qty < quantity) {
+        return res.status(400).send("Not enough shares to sell.");
+      }
+
+      existingHolding.qty -= quantity;
+      existingHolding.price = stockPrice;
+
+      if (existingHolding.qty === 0) {
+        await HoldingsModel.deleteOne({ name });
+      } else {
+        await existingHolding.save();
+      }
+    }
+
+    res.send("Order saved successfully!");
   } catch (error) {
     console.error(error);
     res.status(500).send("Error saving order");
