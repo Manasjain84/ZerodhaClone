@@ -1,4 +1,4 @@
-# Zerodha Clone
+# Trading Platform Web Application
 
 A full-stack MERN application inspired by the Zerodha Kite trading platform. The project replicates the core trading workflow, allowing users to buy and sell stocks, manage holdings, and view orders through an interactive dashboard.
 
